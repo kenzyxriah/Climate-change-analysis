@@ -1,5 +1,5 @@
 import streamlit as st
-pip install requirements(2).txt
+pip install -r requirements(2).txt
 import pandas as pd
 import math
 from pathlib import Path
