@@ -1,152 +1,62 @@
 import streamlit as st
-#!pip install -r requirements(2).txt
 import pandas as pd
 import math
 from pathlib import Path
+import pandas as pd
+import streamlit as st
+import math
+from pathlib import Path
+import plotly.express as px
+import numpy as np
+import seaborn as sns
+import matplotlib.pyplot as plt
+from scipy import stats
+from sklearn.preprocessing import StandardScaler
+from sklearn.cluster import KMeans
+import statsmodels.api as sm
+import plotly.graph_objects as go
+
+df = pd.read_csv(r'C:\Users\Admin\Documents\Data Science\Python\climate_change_p\climate_change_mod.csv')
 
 # Set the title and favicon that appear in the Browser's tab bar.
 st.set_page_config(
-    page_title='GDP dashboard',
+    page_title='Climate dashboard',
     page_icon=':earth_americas:', # This is an emoji shortcode. Could be a URL too.
 )
 
 # -----------------------------------------------------------------------------
 # Declare some useful functions.
-
 @st.cache_data
-def get_gdp_data():
-    """Grab GDP data from a CSV file.
+def load_data():
+    return pd.read_csv(r'C:\Users\Admin\Documents\Data Science\Python\climate_change_p\climate_change_mod.csv')  
 
-    This uses caching to avoid having to read the file every time. If we were
-    reading from an HTTP endpoint instead of a file, it's a good idea to set
-    a maximum age to the cache with the TTL argument: @st.cache_data(ttl='1d')
-    """
+df = load_data()
 
-    # Instead of a CSV on disk, you could read from an HTTP endpoint here too.
-    DATA_FILENAME = Path(__file__).parent/'data/gdp_data.csv'
-    raw_gdp_df = pd.read_csv(DATA_FILENAME)
+# Define columns
+cat_cols = ['Year', 'Country', 'ISO Country Code', 'Continent']
+numeric_cols = ['Avg Temperature (°C)', 'CO2 Emissions (Tons/Capita)', 'Sea Level Rise (mm)', 
+                'Rainfall (mm)', 'Population', 'Renewable Energy (%)', 'Extreme Weather Events',
+                'Forest Area (%)', 'Rainfall (mm)_per_100', 'Pop_Density(per_100m)']
 
-    MIN_YEAR = 1960
-    MAX_YEAR = 2022
+# Streamlit UI
+st.title("Density Plot and Histogram App")
 
-    # The data above has columns like:
-    # - Country Name
-    # - Country Code
-    # - [Stuff I don't care about]
-    # - GDP for 1960
-    # - GDP for 1961
-    # - GDP for 1962
-    # - ...
-    # - GDP for 2022
-    #
-    # ...but I want this instead:
-    # - Country Name
-    # - Country Code
-    # - Year
-    # - GDP
-    #
-    # So let's pivot all those year-columns into two: Year and GDP
-    gdp_df = raw_gdp_df.melt(
-        ['Country Code'],
-        [str(x) for x in range(MIN_YEAR, MAX_YEAR + 1)],
-        'Year',
-        'GDP',
-    )
+# User selection
+x = st.selectbox("Select the numerical column:", numeric_cols)
+y = st.selectbox("Select the categorical column for grouping:", cat_cols)
+include_hist = st.checkbox("Include Histogram", value=True)
 
-    # Convert years from string to integers
-    gdp_df['Year'] = pd.to_numeric(gdp_df['Year'])
+# Plot
+fig, ax = plt.subplots(figsize=(10, 6))
+sns.kdeplot(data=df, x=x, hue=y, fill=False, common_norm=False, ax=ax)
 
-    return gdp_df
+if include_hist:
+    ax1 = ax.twinx()
+    sns.histplot(data=df, x=x, hue=y, element="step", common_norm=False, alpha=0.3, ax=ax1)
 
-gdp_df = get_gdp_data()
+ax.set_title("KDE Density Plot with Optional Histogram")
+ax.set_xlabel(x)
+ax.set_ylabel("Density")
+ax.legend(title=y)
 
-# -----------------------------------------------------------------------------
-# Draw the actual page
-
-# Set the title that appears at the top of the page.
-'''
-# :earth_americas: GDP dashboard
-
-Browse GDP data from the [World Bank Open Data](https://data.worldbank.org/) website. As you'll
-notice, the data only goes to 2022 right now, and datapoints for certain years are often missing.
-But it's otherwise a great (and did I mention _free_?) source of data.
-'''
-
-# Add some spacing
-''
-''
-
-min_value = gdp_df['Year'].min()
-max_value = gdp_df['Year'].max()
-
-from_year, to_year = st.slider(
-    'Which years are you interested in?',
-    min_value=min_value,
-    max_value=max_value,
-    value=[min_value, max_value])
-
-countries = gdp_df['Country Code'].unique()
-
-if not len(countries):
-    st.warning("Select at least one country")
-
-selected_countries = st.multiselect(
-    'Which countries would you like to view?',
-    countries,
-    ['DEU', 'FRA', 'GBR', 'BRA', 'MEX', 'JPN'])
-
-''
-''
-''
-
-# Filter the data
-filtered_gdp_df = gdp_df[
-    (gdp_df['Country Code'].isin(selected_countries))
-    & (gdp_df['Year'] <= to_year)
-    & (from_year <= gdp_df['Year'])
-]
-
-st.header('GDP over time', divider='gray')
-
-''
-
-st.line_chart(
-    filtered_gdp_df,
-    x='Year',
-    y='GDP',
-    color='Country Code',
-)
-
-''
-''
-
-
-first_year = gdp_df[gdp_df['Year'] == from_year]
-last_year = gdp_df[gdp_df['Year'] == to_year]
-
-st.header(f'GDP in {to_year}', divider='gray')
-
-''
-
-cols = st.columns(4)
-
-for i, country in enumerate(selected_countries):
-    col = cols[i % len(cols)]
-
-    with col:
-        first_gdp = first_year[first_year['Country Code'] == country]['GDP'].iat[0] / 1000000000
-        last_gdp = last_year[last_year['Country Code'] == country]['GDP'].iat[0] / 1000000000
-
-        if math.isnan(first_gdp):
-            growth = 'n/a'
-            delta_color = 'off'
-        else:
-            growth = f'{last_gdp / first_gdp:,.2f}x'
-            delta_color = 'normal'
-
-        st.metric(
-            label=f'{country} GDP',
-            value=f'{last_gdp:,.0f}B',
-            delta=growth,
-            delta_color=delta_color
-        )
+st.pyplot(fig)
