@@ -26,9 +26,11 @@ st.set_page_config(
 
 # -----------------------------------------------------------------------------
 # Declare some useful functions.
+url = "https://raw.githubusercontent.com/kenzyxriah/Climate-change-analysis/main/climate_change_mod.csv"
+
 @st.cache_data
 def load_data():
-    return pd.read_csv(r'C:\Users\Admin\Documents\Data Science\Python\climate_change_p\climate_change_mod.csv')  
+    return pd.read_csv(url)  
 
 df = load_data()
 
